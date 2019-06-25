@@ -66,9 +66,9 @@ end
 function __bobthefish_git_branch -S -d 'Get the current git branch (or commitish)'
     set -l ref (command git symbolic-ref HEAD 2>/dev/null)
     and begin
-        [ "$theme_display_git_master_branch" != 'yes' -a "$ref" = 'refs/heads/master' ]
-        and echo $branch_glyph
-        and return
+        # [ "$theme_display_git_master_branch" != 'yes' -a "$ref" = 'refs/heads/master' ]
+        # and echo $branch_glyph
+        # and return
 
         # truncate the middle of the branch name, but only if it's 25+ characters
         set -l truncname (string replace -r '^(.{28}).{3,}(.{5})$' "\$1…\$2" $ref)
@@ -346,7 +346,7 @@ function __bobthefish_path_segment -S -a segment_dir -d 'Display a shortened for
         set segment_basename_color $color_path_nowrite_basename
     end
 
-    __bobthefish_start_segment $segment_color
+    # __bobthefish_start_segment $segment_color
 
     set -l directory
     set -l parent
@@ -362,7 +362,7 @@ function __bobthefish_path_segment -S -a segment_dir -d 'Display a shortened for
     end
 
     echo -n $parent
-    set_color -b $segment_basename_color
+    # set_color -b $segment_basename_color
     echo -ns $directory ' '
 end
 
@@ -421,7 +421,7 @@ function __bobthefish_prompt_status -S -a last_status -d 'Display flags for a no
     and set bg_jobs 1
 
     if [ "$nonzero" -o "$superuser" -o "$bg_jobs" ]
-        __bobthefish_start_segment $color_initial_segment_exit
+        # __bobthefish_start_segment $color_initial_segment_exit
         if [ "$nonzero" ]
             set_color normal
             set_color -b $color_initial_segment_exit
@@ -449,6 +449,10 @@ function __bobthefish_prompt_status -S -a last_status -d 'Display flags for a no
             echo -n $bg_job_glyph
         end
     end
+
+	# end it with an arrow for the prompt
+	echo -ns \uf054
+
 end
 
 function __bobthefish_prompt_vi -S -d 'Display vi mode'
@@ -628,7 +632,9 @@ function __bobthefish_prompt_user -S -d 'Display current user and hostname'
     and set -l display_hostname
 
     if set -q display_user
-        __bobthefish_start_segment $color_username
+        # __bobthefish_start_segment $color_username
+		# set_color -b $color_username
+		set_color $color_username
         echo -ns (whoami)
     end
 
@@ -637,7 +643,8 @@ function __bobthefish_prompt_user -S -d 'Display current user and hostname'
             # reset colors without starting a new segment...
             # (so we can have a bold username and non-bold hostname)
             set_color normal
-            set_color -b $color_hostname[1] $color_hostname[2..-1]
+            set_color $color_hostname[1]
+            # set_color -b $color_hostname[1] $color_hostname[2..-1]
             echo -ns '@' (prompt_hostname)
         else
             __bobthefish_start_segment $color_hostname
@@ -818,7 +825,7 @@ function __bobthefish_prompt_hg -S -a hg_root_dir -a real_pwd -d 'Display the ac
         set flag_colors $color_repo_dirty
     end
 
-    __bobthefish_path_segment $hg_root_dir
+    # __bobthefish_path_segment $hg_root_dir
 
     __bobthefish_start_segment $flag_colors
     echo -ns $hg_glyph ' '
@@ -878,9 +885,12 @@ function __bobthefish_prompt_git -S -a git_root_dir -a real_pwd -d 'Display the 
         set flag_colors $color_repo_staged
     end
 
-    __bobthefish_path_segment $git_root_dir
+    # __bobthefish_path_segment $git_root_dir
 
-    __bobthefish_start_segment $flag_colors
+	set_color normal # clear out anything bold or underline...
+    set_color -b normal $flag_colors
+    # __bobthefish_start_segment $flag_colors
+
     echo -ns (__bobthefish_git_branch) $flags ' '
     set_color normal
 
@@ -987,25 +997,8 @@ function fish_prompt -d 'bobthefish, a fish theme optimized for awesome'
     # Start each line with a blank slate
     set -l __bobthefish_current_bg
 
-    # Status flags and input mode
-    __bobthefish_prompt_status $last_status
-    __bobthefish_prompt_vi
-
-    # Containers and VMs
-    __bobthefish_prompt_vagrant
-    __bobthefish_prompt_docker
-    __bobthefish_prompt_k8s_context
-
-    # User / hostname info
-    __bobthefish_prompt_user
-
-    # Virtual environments
-    __bobthefish_prompt_desk
-    __bobthefish_prompt_rubies
-    __bobthefish_prompt_virtualfish
-    __bobthefish_prompt_virtualgo
-
     set -l real_pwd (__bobthefish_pwd)
+
 
     # VCS
     set -l git_root_dir (__bobthefish_git_project_dir $real_pwd)
@@ -1015,17 +1008,69 @@ function fish_prompt -d 'bobthefish, a fish theme optimized for awesome'
         # only show the closest parent
         switch $git_root_dir
             case $hg_root_dir\*
-                __bobthefish_prompt_git $git_root_dir $real_pwd
+                __bobthefish_prompt_git $git_root_dir
+				set project_name (__bobthefish_basename "$git_root_dir")
             case \*
-                __bobthefish_prompt_hg $hg_root_dir $real_pwd
+                __bobthefish_prompt_hg $hg_root_dir
+				set project_name (__bobthefish_basename "$hg_root_dir")
         end
     else if [ "$git_root_dir" ]
-        __bobthefish_prompt_git $git_root_dir $real_pwd
+        __bobthefish_prompt_git $git_root_dir
+		set project_name (__bobthefish_basename "$git_root_dir")
+
     else if [ "$hg_root_dir" ]
-        __bobthefish_prompt_hg $hg_root_dir $real_pwd
-    else
-        __bobthefish_prompt_dir $real_pwd
+        __bobthefish_prompt_hg $hg_root_dir
+		set project_name (__bobthefish_basename "$hg_root_dir")
+    # else
+        # __bobthefish_prompt_dir $real_pwd
     end
 
-    __bobthefish_finish_segments
+	# newline
+	if [ "$git_root_dir" -o "$hg_root_dir" ]
+		echo -en \n
+	end
+
+    # Containers and VMs
+    __bobthefish_prompt_vagrant
+    __bobthefish_prompt_docker
+    __bobthefish_prompt_k8s_context
+
+    # User / hostname info
+	if [ -z $project_name ]
+    	__bobthefish_prompt_user
+		set_color normal
+	end
+
+    # Virtual environments
+    __bobthefish_prompt_desk
+    __bobthefish_prompt_rubies
+    __bobthefish_prompt_virtualfish
+    __bobthefish_prompt_virtualgo
+
+	if [ "$project_name" ]
+		echo -en $project_name
+
+		if [ "$project_name" = (__bobthefish_basename "$real_pwd") ]
+			echo -en ' '
+		else
+			set -l slength (string length "$git_root_dir")
+			__bobthefish_prompt_dir (string sub -s 2 (string sub -s "$slength" $real_pwd))
+		end
+	else
+		__bobthefish_prompt_dir $real_pwd
+	end
+
+    # __bobthefish_finish_segments
+
+	# Status flags and input mode
+    __bobthefish_prompt_status $last_status
+    __bobthefish_prompt_vi
+
+	# set_color normal # clear out anything bold or underline...
+	set_color normal # clear out anything bold or underline...
+    set_color -b normal $flag_colors
+
+	echo -en ' '
+	# echo -ens \uf054 ' '
+
 end
